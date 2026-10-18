@@ -2,22 +2,19 @@
 pragma solidity ^0.8.26;
 
 import {Script, console} from "forge-std/Script.sol";
-import {AskSwarmRegistry} from "../src/AskSwarmRegistry.sol";
+import {SwarmWager} from "../src/SwarmWager.sol";
 
-/// forge script script/Deploy.s.sol --rpc-url $RPC --private-key $PK --broadcast --verify
-/// Intake v2 is at the same address on every chain; IMD differs (IMDtest on Sepolia).
+/// Optional local simulation of this launch's sole application. IMD deploys through its factory.
+/// AskSwarmRegistry is already live from launch #2099 and must never be redeployed here.
 contract Deploy is Script {
-    address constant INTAKE = 0xa43e6F75ee006411F79Ac1C84120606C2330DE82;
-    address constant ORACLE_SIGNER = 0x5598Aa9146215Bc13eb26f2c692Ad1461Fd32982;
+    address constant REGISTRY = 0x53e1E2f33f05086086AdF618Ca92c3Cb0ab111CD;
+    address constant IMD = 0xD34a99Bc0f67aE1bbd63C660e6d0b0dd03E263B7;
 
-    function run() external {
-        address imd = block.chainid == 11155111
-            ? 0x44a1Cd38474FB1748400E7DEb5F8D786ccE3F89A
-            : 0xD34a99Bc0f67aE1bbd63C660e6d0b0dd03E263B7;
+    function run() external returns (SwarmWager wager) {
+        require(block.chainid == 1, "Ethereum mainnet only");
         vm.startBroadcast();
-        AskSwarmRegistry r = new AskSwarmRegistry(INTAKE, imd, ORACLE_SIGNER);
+        wager = new SwarmWager(REGISTRY, IMD);
         vm.stopBroadcast();
-        console.log("AskSwarmRegistry", address(r), "chain", block.chainid);
-        console.log("price (wei IMD)", r.price());
+        console.log("SwarmWager", address(wager), "chain", block.chainid);
     }
 }

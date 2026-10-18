@@ -231,6 +231,54 @@ notes: [contracts/ADAPTATION.md](contracts/ADAPTATION.md), [contracts/ADAPTATION
 
 The explorer at [/answers](https://askswarm-nine.vercel.app/answers) reads both mainnet registries.
 
+### SwarmWager launch
+
+[`SwarmWager`](src/SwarmWager.sol) lets two parties stake equal amounts of IMD on a bool question.
+This contracts-only Ethereum launch deploys **only SwarmWager**. Its nonpayable constructor takes
+`(registry, imd)` = (`0x53e1e2f33f05086086adf618ca92c3cb0ab111cd`,
+`0xd34a99bc0f67ae1bbd63c660e6d0b0dd03e263b7`). The registry is the existing launch #2099 contract.
+There is no owner, admin, initializer, upgrade path, token deployment or ETH handling. IMD's
+deployment service performs the launch through its factory; this repository supplies the source
+and tests. `script/Deploy.s.sol` now targets SwarmWager with these same dependencies.
+
+The creator approves IMD and calls `create(body, side, stake, joinBy, resolveAfter)`, escrowing one
+stake and the registry's current request fee. Both parties should review the exact stored body,
+panel and terms before the counterparty approves IMD and calls `join(id)`. `joinBy` must be in the
+future and no later than `resolveAfter`. `MAX_TERM = 365 days` limits `resolveAfter` from creation
+and therefore bounds both deadlines. Matching at exactly `joinBy` remains allowed. Anyone can
+call `resolve(id)` at or after `resolveAfter`; it buys the question at the registry's current price,
+approves exactly that amount and returns unused fee escrow to the creator.
+
+If the price rises, anyone may approve IMD and call `topUpFee(id, amount)` while the wager is
+matched, then retry `resolve`. A top-up is a voluntary contribution to the creator's fee escrow:
+**all unused contributions go to the creator**, including on abandonment. Resolution never pulls
+a price shortfall from its caller automatically. `ANSWER_WINDOW = 3 days` is the existing wait
+before a pending request can be refunded through `settle`. Unmatched wagers can be cancelled by
+the creator at any time or by anyone after `joinBy`; an unasked matched wager can be abandoned by
+anyone strictly after `resolveAfter + ANSWER_WINDOW`, returning both stakes and all unspent fees.
+With the maximum term, the abandonment path is available strictly after 368 days from creation.
+
+Use questions about fixed facts with explicit observation times and definitions. The caller of
+`resolve` chooses when the oracle receives the body; a relative window or wording such as "now"
+can change the answer as that time changes. There is no upper deadline for `resolve`: once
+abandonment is available, the first successful `resolve` or `abandon` decides which path runs.
+Likewise, a usable answer already recorded when `settle` executes pays the winner even after the
+three-day wait; if `settle` first refunds a pending request, a later answer cannot undo the refund.
+The timeout enables a refund; it does not make every later answer invalid.
+
+The contract trusts the registry, Intake writer and oracle signer to pair an answer with the
+question bought by its request id. It does not pin the canonical question hash, parse JSON,
+validate wording, or enforce panel strength beyond a strict majority. The signed answer must be
+verified by the registry, of type bool, exactly 32 bytes and canonically encode 0 or 1. All other
+terminal outcomes refund stakes. The oracle fee is spent even on refusal, disagreement or failed
+delivery. This immutable deployment supports the specified IMD token and registry; it is not a
+generic fee-on-transfer or rebasing-token escrow.
+
+Run `forge build` and `forge test` offline with the existing configuration. The original 15 wager
+tests also run on a fork; `test/SwarmWagerLiveRegistry.t.sol` uses the actual registry address on a
+fork and an explicitly installed source fixture offline. See [ADAPTATION.md](ADAPTATION.md) for
+the audit dispositions, new regressions, mainnet fork checks and launch handoff.
+
 ### The flywheel back to the dataset
 
 The split-risk model reads `evalengine/imd-oracle-outcomes`; the registry writes back to it. A daily
