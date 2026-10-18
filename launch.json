@@ -1,0 +1,13 @@
+{
+  "kind": "evm_contracts",
+  "contracts": [
+    {
+      "contract": "SwarmWager",
+      "constructorArgs": [
+        "0x53e1e2f33f05086086adf618ca92c3cb0ab111cd",
+        "0xd34a99bc0f67ae1bbd63c660e6d0b0dd03e263b7"
+      ]
+    }
+  ],
+  "notes": "Deploy only the accepted, unchanged src/SwarmWager.sol on Ethereum mainnet. Constructor arguments are registry, then imd: the existing AskSwarmRegistry from launch #2099 and the existing IMD token. No registry or token deployment, owner, admin, upgrade path, ETH funding or initialization is required; the nonpayable constructor makes no external call. Each wager escrows equal IMD stakes and the creator's request fee. Resolution approves exactly the registry's current price, calls askAtMost and returns unused fee escrow to the creator. Only an Answered, verified, 32-byte canonical bool with agreed * 2 > panelSize pays the winner; other terminal outcomes refund both stakes. Pending or unknown requests can be refunded strictly after the three-day ANSWER_WINDOW. Unmatched wagers can be cancelled; matched wagers can be abandoned strictly after resolveAfter plus three days. Terms are bounded to 365 days from creation. Anyone may voluntarily top up a matched wager's fee; unused contributions belong to the creator. Review assumptions: settlement trusts the existing registry, its oracle signer and Intake writer's pairing of requests with signed answers, and the IMD token's transfer behavior. Participants must agree on a fixed fact and observation window because the resolve caller chooses the submission time. A usable answer present when settle executes pays even after the timeout; a prior timeout refund is final. After the abandonment deadline, the first successful resolve or abandon determines the path. Direct token donations have no recovery mechanism."
+}
